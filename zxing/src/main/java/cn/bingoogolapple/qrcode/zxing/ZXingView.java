@@ -95,11 +95,14 @@ public class ZXingView extends QRCodeView {
                 source = new PlanarYUVLuminanceSource(data, width, height, 0, 0, width, height, false);
             }
 
-            rawResult = mMultiFormatReader.decodeWithState(new BinaryBitmap(new GlobalHistogramBinarizer(source)));
-            if (rawResult == null) {
-                rawResult = mMultiFormatReader.decodeWithState(new BinaryBitmap(new HybridBinarizer(source)));
-                if (rawResult != null) {
-                    BGAQRCodeUtil.d("GlobalHistogramBinarizer 没识别到，HybridBinarizer 能识别到");
+            rawResult = decodeByHybridBinarizer(source);
+            if (!isSuccessResult(rawResult)) {
+                Result globalHistogramBinarizerResult = decodeByGlobalHistogramBinarizer(source);
+                if(rawResult == null || isSuccessResult(globalHistogramBinarizerResult)) {
+                    rawResult = globalHistogramBinarizerResult;
+                    if(rawResult != null) {
+                        BGAQRCodeUtil.d("HybridBinarizer 没识别到，GlobalHistogramBinarizer 能识别到");
+                    }
                 }
             }
         } catch (Exception e) {
@@ -136,6 +139,24 @@ public class ZXingView extends QRCodeView {
             }
         }
         return new ScanResult(result);
+    }
+
+    private Result decodeByGlobalHistogramBinarizer(PlanarYUVLuminanceSource source) {
+        try{
+             return mMultiFormatReader.decodeWithState(new BinaryBitmap(new GlobalHistogramBinarizer(source)));
+        } catch (Exception e) { }
+        return null;
+    }
+
+    private Result decodeByHybridBinarizer(PlanarYUVLuminanceSource source) {
+        try{
+             return mMultiFormatReader.decodeWithState(new BinaryBitmap(new HybridBinarizer(source)));
+        } catch (Exception e) { }
+        return null;
+    }
+
+    private boolean isSuccessResult(Result result) {
+        return result != null && !TextUtils.isEmpty(result.getText());
     }
 
     private boolean isNeedAutoZoom(BarcodeFormat barcodeFormat) {
